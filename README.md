@@ -1,7 +1,7 @@
 This program converts G-code, the standard CNC control language into RML, used by Roland's CNC mills.
 The output can then be directly sent to the mill, simply by printing it. (The mill emulates a line printer)
 
-The program only depends on the standard library, so compiling should be fairly straghforwad.
+The program only depends on the standard library, so compiling should be fairly straightforward.
 This command should work if you have gcc installed:
 
 ```sh
@@ -20,10 +20,10 @@ On linux, it's possible to directly send the output to the mill:
 ./gcode2rml < filetocut.nc > /dev/usb/lp0
 ```
 
-The program always uses relative positioning, the mill has to be manualy moved to the desired origin before cutting.
+The program always uses relative positioning, the mill has to be manually moved to the desired origin before cutting.
 
 For some reason, my CNC mill does not cut circles properly except on the first file sent.
-As a workaround, send any G-code, and while it's running, manualy hold "Clear" to reset the mill without reinitializing it.
+As a workaround, send any G-code, and while it's running, manually hold "Clear" to reset the mill without reinitializing it.
 
 # Supported G-code commands
 
@@ -35,10 +35,10 @@ As a workaround, send any G-code, and while it's running, manualy hold "Clear" t
 |G10|Set offset (only for X, Y and Z)|
 |G20, G21|Set units (mm/in)|
 |G90, G91|Relative/absolute positioning|
-|S|Set spindle speed (aproximate, should be within 400 RPM)|
-|F|Set feedrate|
+|S|Set spindle speed (approximate, should be within 400 RPM)|
+|F|Set feed rate|
 |M00, M01, M02, M30|Stop program, Ignored|
-|M03, M04|Start spindle (Always clockwize)|
+|M03, M04|Start spindle (Always clockwise)|
 |M05|Stop spindle|
 
 Circular movement is mostly untested, may not work as expected.
