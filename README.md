@@ -42,3 +42,76 @@ As a workaround, send any G-code, and while it's running, manually hold "Clear" 
 |M05|Stop spindle|
 
 Circular movement is mostly untested, may not work as expected.
+
+# RML-1 Format
+
+There doesn't seem to be much online about RML, so here are all the commands I tested on a MDX-540.
+Each command consists of a command name, followed by a number of comma separated arguments, and ends with a semicolon.
+White space before and after commands is ignored. 
+
+Example program:
+
+```
+V60;
+^PR;
+!RC15;
+!MC1;
+Z0,0,-1000;
+Z0,0,1000;
+!MC0;
+```
+
+This will start the spindle at 12000 RPM, cut 10 mm down, move back up and stop the spindle.
+
+## V (set feed rate)
+
+Sets the feed rate used for 3 dimensional movement commands in mm/second.
+Does not affect 2d movement like `PR` or `PA`
+
+
+`V10;`: Set the feed rate to 10 mm/second or 60 mm/minute.
+
+## F (set 2d feed rate)
+
+Same as `V`, but only effects 2d movement.
+
+## PA and D (Plot absolute)
+
+Takes 2 arguments, and moves the mill to those X, Y coordinates in 100ths of a millimeter.
+Does not change Z position.
+Makes the `Z` command use absolute coordinates, even if called with no arguments.
+
+`PA1000,2000;`: Move to (10 mm, 20 mm) on X, Y.
+
+`PA;`: Switch `Z` to absolute motion.
+
+## PR and I (Plot relative)
+
+Similar to `PA`, but coordinates are relative to the mills current positions.
+Running this will make the `Z` command relative.
+
+`PR1000,0;` Move 10 mm along  X.
+
+`PR;` Switch `Z` to relative motion.
+
+## Z (3 axis move)
+
+Takes 3 arguments, X, Y and Z coordinates in 100ths of a millimeter and moves the mill to that position.
+Coordinates are relative if `PR` was executed, and absolute if `PA` was executed.
+This command uses the feed rate specified by `V`, even if the Z axis movement is zero.
+
+`Z1000,1000,1000`: Move 10 mm along all axes if in `PR` mode, or to (10, 10, 10) if in `PA` mode.
+
+## !MC (Motor control)
+
+Takes 1 arguments, starting the spindle if it was a 1, and stopping it on a zero.
+
+## !RC (Rate control)
+
+Takes one argument, used to set the speed of the spindle. For small values:
+
+```
+Speed (RPM) = 400 + 737 * setting
+```
+
+For larger ones, the argument is interpreted as RPM.
