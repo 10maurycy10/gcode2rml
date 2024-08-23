@@ -1,4 +1,4 @@
-This program converts G-code, the standard CNC control language into RML, used by Roland's CNC mills.
+This program converts standard G-code into RML the format used by Roland's CNC mills.
 The output can then be directly sent to the mill, simply by printing it. (The mill emulates a line printer)
 
 The program only depends on the standard library, so compiling should be fairly straightforward.
@@ -14,13 +14,13 @@ To use it, just pipe in the G-code and it will output the translated RML:
 ./gcode2rml < filetocut.nc > converted.rml
 ```
 
-On linux, it's possible to directly send the output to the mill:
+On linux (and other unix), it's possible to directly send the output to the mill:
 
 ```sh
 ./gcode2rml < filetocut.nc > /dev/usb/lp0
 ```
 
-The program always uses relative positioning, the mill has to be manually moved to the desired origin before cutting.
+This program always uses relative positioning, the mill has to be manually moved to the desired origin before cutting.
 
 For some reason, my CNC mill does not cut circles properly (very slow and uneven feed) except on the first file sent.
 As a workaround, send any G-code, and while it's running, manually hold "Clear" to reset the mill without reinitializing it.
