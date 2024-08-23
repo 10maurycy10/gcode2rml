@@ -24,7 +24,7 @@
 
 void init() {
 	printf("V60;\r\n"); // Sane default movement speed, 10 mm/s
-	printf("PR;\r\n"); // Relative mode
+	printf("^PR;\r\n"); // Relative mode
 	printf("!MC0;\r\n"); // Stop spindle
 	printf("!RC15;\r\n"); // Default to 12000 RPM, the max rotational speed of my machine
 }
@@ -295,7 +295,7 @@ void translate(char* command) {
 		command++;
 		float feedrate = read_float(&command) * scale;
 		printf("V%.1f;\r\n", feedrate / 60);
-	} else if (*command == 'X') { // Bare cordinates, assume linear movement
+	} else if (*command == 'X' || *command == 'Y' || *command == 'Z') { // Bare cordinates, assume linear movement
 		int have_x = 0, have_y = 0, have_z = 0, have_j = 0, have_i = 0, have_k = 0;
 		float x, y, z, j = 0, i = 0, k =0;
 		while (1) {
