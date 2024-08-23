@@ -23,7 +23,7 @@
 // Spindle speed and feed rate are set directly by the g-code parser
 
 void init() {
-	printf("V60;\r\n"); // Sane default movement speed, 10 mm/s
+	printf("V10;\r\n"); // Sane default movement speed, 10 mm/s
 	printf("^PR;\r\n"); // Relative mode
 	printf("!MC0;\r\n"); // Stop spindle
 	printf("!RC15;\r\n"); // Default to 12000 RPM, the max rotational speed of my machine
@@ -134,6 +134,13 @@ void circular(
 	float dir,
 	int have_x, int have_y, int have_z
 ) {
+	// Convert inputs to mm
+	x *= scale;
+	y *= scale;
+	z *= scale;
+	i *= scale;
+	j *= scale;
+	k *= scale;
 	// Find starting position
 	float start[3] = {last_x, last_y, last_z};
 	fprintf(stderr, "Start: %f %f %f\n", start[0], start[1], start[2]);
@@ -162,10 +169,9 @@ void circular(
 	// Convert points to polar
 	float start_distance = sqrt(pow(start[circular0] - center[circular0], 2) + pow(start[circular1] - center[circular1], 2));
 	float end_distance = sqrt(pow(dst[circular0] - center[circular0], 2) + pow(dst[circular1] - center[circular1], 2));
-//	fprintf(stderr, "Distances %f %f\n", start_distance, end_distance);
-//	fprintf(stderr, "Angles %f %f\n", start_angle, end_angle);
+	fprintf(stderr, "Distances %f %f\n", start_distance, end_distance);
+	fprintf(stderr, "Angles %f %f\n", start_angle, end_angle);
 	
-	float delta_angle = end_angle - start_angle;
 	int steps = (start_distance * 2 * M_PI) * CIRC_RES;
 	if (steps < 10) steps = 10;
 	fprintf(stderr, "Using %d steps\n", steps);
@@ -185,19 +191,14 @@ void circular(
 		point[circular0] = sin(angle) * r + center[circular0];
 		point[circular1] = cos(angle) * r + center[circular1];
 		// Send to mill
-		point[0] *= scale;
-		point[1] *= scale;
-		point[2] *= scale;
 		move(offset_x + point[0], offset_y + point[1], offset_z + point[2]);
 	}
 	// Ensure we ended up at the right point and update last_x
-	dst[0] *= scale;
-	dst[1] *= scale;
-	dst[2] *= scale;
 	move(offset_x + dst[0], offset_y + dst[1], offset_z + dst[2]);
 	last_x = dst[0];
 	last_y = dst[1];
 	last_z = dst[2];	
+	exit(0);
 }
 
 float dir = 1; // Last used circular interpolation direction
@@ -270,6 +271,7 @@ void translate(char* command) {
 			case 17: circular0 = 0; circular1 = 1; break;
 			case 18: circular0 = 2; circular1 = 1; break;
 			case 19: circular0 = 1; circular1 = 2; break;
+			case 49: break;
 			case 20: scale = 1; default_decimal_places = 3; break; // Milimeters
 			case 21: scale = 25.4; default_decimal_places = 4; break; // Inches
 			case 90: relative = 0; break; // Absolute movement
@@ -339,6 +341,12 @@ void translate(char* command) {
 			case 30: case 2: break; // End of program
 			case 3: case 4: printf("!MC1;\r\n"); break; // Start spindle
 			case 5: printf("!MC0;\r\n"); break; // Stop spindle
+			case 6:
+				if (*command == 'T') {
+					command++;
+					read_number(&command);
+				}
+				break; // Tool change, ignored
 			default:
 				fprintf(stderr, "gcode2rml: Warning, command M%d is not supported\n", g_command);
 				break;
