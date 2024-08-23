@@ -143,7 +143,7 @@ void circular(
 	k *= scale;
 	// Find starting position
 	float start[3] = {last_x, last_y, last_z};
-	fprintf(stderr, "Start: %f %f %f\n", start[0], start[1], start[2]);
+	//fprintf(stderr, "Start: %f %f %f\n", start[0], start[1], start[2]);
 	// Find destination, converting to absolute if needed
 	if (relative) {
 		x += last_x;
@@ -154,27 +154,34 @@ void circular(
 	if (have_x) dst[0] = x;
 	if (have_y) dst[1] = y;
 	if (have_z) dst[2] = z;
-	fprintf(stderr, "Dst: %f %f %f\n", dst[0], dst[1], dst[2]);
+	//fprintf(stderr, "Dst: %f %f %f\n", dst[0], dst[1], dst[2]);
 	// Find center point
 	float center[3] = {i+last_x, j+last_y, k+last_z};
-	fprintf(stderr, "Center: %f %f %f\n", center[0], center[1], center[2]);
+	//fprintf(stderr, "Center: %f %f %f\n", center[0], center[1], center[2]);
 	// Interpolate
 	float start_angle = atan2(start[circular0] - center[circular0], start[circular1] - center[circular1]);
 	float end_angle = atan2(dst[circular0] - center[circular0], dst[circular1] - center[circular1]);
 	// Ensure the angles are increaseing (for dir=1), or decreasing (for dir=-1)
-	if ((end_angle - start_angle)*dir <= 0) {
-		end_angle += M_PI * 2 * dir;
+	if ((end_angle - start_angle)*(-dir) <= 0) {
+		end_angle += M_PI * 2 * (-dir);
 	}
 
 	// Convert points to polar
 	float start_distance = sqrt(pow(start[circular0] - center[circular0], 2) + pow(start[circular1] - center[circular1], 2));
 	float end_distance = sqrt(pow(dst[circular0] - center[circular0], 2) + pow(dst[circular1] - center[circular1], 2));
-	fprintf(stderr, "Distances %f %f\n", start_distance, end_distance);
-	fprintf(stderr, "Angles %f %f\n", start_angle, end_angle);
+	if (abs(start_distance - end_distance) > 1) {
+		fprintf(stderr, "Warning, very large inconsistance in circular interpolation.\n");
+		fprintf(stderr, "The G-code is probobly broken");
+	}
+	//fprintf(stderr, "Distances %f %f\n", start_distance, end_distance);
+	//fprintf(stderr, "Angles %f %f\n", start_angle, end_angle);
 	
-	int steps = (start_distance * 2 * M_PI) * CIRC_RES;
+	// Compute length of arc to find good number of steps
+	float delta_angle = abs(fmod(abs(start_angle - end_angle)+M_PI, M_PI*2)) - M_PI;
+	//fprintf(stderr, "Delta angle: %f\n", delta_angle);
+	int steps = (start_distance * abs(delta_angle))  * CIRC_RES;
 	if (steps < 10) steps = 10;
-	fprintf(stderr, "Using %d steps\n", steps);
+	//fprintf(stderr, "Using %d steps\n", steps);
 
 	// Linearly interpolate in polar cordinates
 	for (int i = 0; i < steps; i++) {
@@ -198,7 +205,6 @@ void circular(
 	last_x = dst[0];
 	last_y = dst[1];
 	last_z = dst[2];	
-	exit(0);
 }
 
 float dir = 1; // Last used circular interpolation direction
