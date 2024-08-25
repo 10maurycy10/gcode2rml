@@ -278,8 +278,9 @@ void translate(char* command) {
 			case 18: circular0 = 2; circular1 = 1; break;
 			case 19: circular0 = 1; circular1 = 2; break;
 			case 49: break;
-			case 20: scale = 1; default_decimal_places = 3; break; // Milimeters
-			case 21: scale = 25.4; default_decimal_places = 4; break; // Inches
+			case 40: break; // Cancle tool offset
+			case 20: scale = 25.4; default_decimal_places = 4; break; // In
+			case 21: scale = 1; default_decimal_places = 3; break; // mm
 			case 90: relative = 0; break; // Absolute movement
 			case 91: relative = 1; break; // Relative movement
 			default: 
