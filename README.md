@@ -43,7 +43,7 @@ As a workaround, send any G-code, and while it's running, manually hold "Clear" 
 |M05|Stop spindle|
 |M06|Tool change, ignored|
 
-Circular movement is mostly untested, may not work as expected.
+4-axis machining is not supported.
 Automatic tool changes are not supported, but many CAM tools will generate M06 and G49 commands even for a single tool job.
 
 # RML-1 Format
