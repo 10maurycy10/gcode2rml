@@ -24,24 +24,32 @@
 
 void init() {
 	printf("V10;\r\n"); // Sane default movement speed, 10 mm/s
+	printf("!DW;\r\n"); // No dwell time
 	printf("^PR;\r\n"); // Relative mode
 	printf("!MC0;\r\n"); // Stop spindle
 	printf("!RC15;\r\n"); // Default to 12000 RPM, the max rotational speed of my machine
 }
 
-int rml_last_x = 0, rml_last_y = 0, rml_last_z = 0;
-void move(float x, float y, float z) { // Abosolute movement in mm
+int rml_last_x = 0, rml_last_y = 0, rml_last_z = 0, rml_last_a = 0;
+void move(float x, float y, float z, float a) { // Abosolute movement in mm
 	// Scale to 10s of micrometers
-	x *= 100; y *= 100; z *= 100; 
+	x *= 100; y *= 100; z *= 100; a *= 1000;
 	// Compute movement neaded to reach position
 	int dx = x - rml_last_x;
 	int dy = y - rml_last_y;
 	int dz = z - rml_last_z;
+	int da = a - rml_last_a;
 	rml_last_x += dx;
 	rml_last_y += dy;
 	rml_last_z += dz;
+	rml_last_a += da;
 	// Send to mill.
-	printf("Z%d,%d,%d;\r\n", (int)dx, (int)dy, (int)dz);
+	printf("!ZE ");
+	if (dx) printf("X%d", dx);
+	if (dy) printf("Y%d", dy);
+	if (dz) printf("Z%d", dz);
+	if (da) printf("A%f", ((float)da)/1000);
+	printf(";\r\n");
 }
 
 ////////////////////
@@ -96,11 +104,11 @@ float read_float(char** string) {
 
 // G-code cordinate system settings 
 int relative = 0;
-float offset_x = 0, offset_y = 0, offset_z = 0;
-float last_x = 0, last_y = 0, last_z = 0;
+float offset_x = 0, offset_y = 0, offset_z = 0, offset_a = 0;
+float last_x = 0, last_y = 0, last_z = 0, last_a = 0;
 float scale = 1; // Scale factor to convert cordinates to mm.
 
-void gcode_move(float x, float y, float z, int change_x, int change_y, int change_z) {
+void gcode_move(float x, float y, float z, float a, int change_x, int change_y, int change_z, int change_a) {
 	x *= scale;
 	y *= scale;
 	z *= scale;
@@ -109,15 +117,18 @@ void gcode_move(float x, float y, float z, int change_x, int change_y, int chang
 		x += last_x;
 		y += last_y;
 		z += last_z;
+		a += last_a;
 	}
 	if (!change_x) x = last_x;
 	if (!change_y) y = last_y;
 	if (!change_z) z = last_z;
+	if (!change_a) a = last_a;
 	// Send to mill
 	last_x = x;
 	last_y = y;
 	last_z = z;
-	move(offset_x + x, offset_y + y, offset_z + z);
+	last_a = a;
+	move(offset_x + x, offset_y + y, offset_z + z, offset_a + a);
 }
 
 // Plane used for circular interpolation, 0 = x, 1 = y, 2 = z.
@@ -198,10 +209,10 @@ void circular(
 		point[circular0] = sin(angle) * r + center[circular0];
 		point[circular1] = cos(angle) * r + center[circular1];
 		// Send to mill
-		move(offset_x + point[0], offset_y + point[1], offset_z + point[2]);
+		move(offset_x + point[0], offset_y + point[1], offset_z + point[2], last_a);
 	}
 	// Ensure we ended up at the right point and update last_x
-	move(offset_x + dst[0], offset_y + dst[1], offset_z + dst[2]);
+	move(offset_x + dst[0], offset_y + dst[1], offset_z + dst[2], last_a);
 	last_x = dst[0];
 	last_y = dst[1];
 	last_z = dst[2];	
@@ -220,8 +231,8 @@ void translate(char* command) {
 		command++;
 		int g_command = read_number(&command);
 		// Read arguments
-		int have_x = 0, have_y = 0, have_z = 0, have_i = 0, have_j = 0, have_k = 0;
-		float x, y, z, i = 0, j = 0, k = 0;
+		int have_x = 0, have_y = 0, have_z = 0, have_a = 0, have_i = 0, have_j = 0, have_k = 0;
+		float x, y, z, a, i = 0, j = 0, k = 0;
 		while (1) {
 			if (*command == 'X') {
 				command++;
@@ -235,10 +246,10 @@ void translate(char* command) {
 				command++;
 				z = read_float(&command);
 				have_z = 1;
-			} else if (*command == 'Z') {
+			} else if (*command == 'A') {
 				command++;
-				z = read_float(&command);
-				have_z = 1;
+				a = read_float(&command);
+				have_a = 1;
 			} else if (*command == 'I') {
 				command++;
 				i = read_float(&command);
@@ -258,13 +269,15 @@ void translate(char* command) {
 		// Execute command
 		switch (g_command) {
 			case 0: case 1: // G00 and G01, linear movement
-				gcode_move(x, y, z, have_x, have_y, have_z);
+				gcode_move(x, y, z, a, have_x, have_y, have_z, have_a);
 				break;
 			case 2: // Circular movement
+				if (have_a) fprintf(stderr, "4th axis circular interpolation is not supported.\n");
 				dir = -1;
 				circular(x, y, z, i, j, k, dir, have_x, have_y, have_z);
 				break;
 			case 3: // Circular movement
+				if (have_a) fprintf(stderr, "4th axis circular interpolation is not supported.\n");
 				dir = 1;
 				circular(x, y, z, i, j, k, dir, have_x, have_y, have_z);
 				break;
@@ -272,6 +285,7 @@ void translate(char* command) {
 				if (have_x) offset_x = x*scale;
 				if (have_y) offset_y = y*scale;
 				if (have_z) offset_z = z*scale;
+				if (have_a) offset_a = a;
 				break;
 			// Plane of interpolation
 			case 17: circular0 = 0; circular1 = 1; break;
@@ -305,8 +319,8 @@ void translate(char* command) {
 		float feedrate = read_float(&command) * scale;
 		printf("V%.1f;\r\n", feedrate / 60);
 	} else if (*command == 'X' || *command == 'Y' || *command == 'Z') { // Bare cordinates, assume linear movement
-		int have_x = 0, have_y = 0, have_z = 0, have_j = 0, have_i = 0, have_k = 0;
-		float x, y, z, j = 0, i = 0, k =0;
+		int have_x = 0, have_y = 0, have_z = 0, have_a = 0, have_j = 0, have_i = 0, have_k = 0;
+		float x, y, z, a, j = 0, i = 0, k = 0;
 		while (1) {
 			if (*command == 'X') {
 				command++;
@@ -320,6 +334,10 @@ void translate(char* command) {
 				command++;
 				z = read_float(&command);
 				have_z = 1;
+			} else if (*command == 'A') {
+				command++;
+				a = read_float(&command);
+				have_a = 1;
 			} else if (*command == 'J') {
 				command++;
 				j = read_float(&command);
@@ -337,7 +355,7 @@ void translate(char* command) {
 		if (have_i || have_j || have_k) {
 			circular(x, y, z, i, j, k, dir,  have_x, have_y, have_z);
 		} else {
-			gcode_move(x, y, z, have_x, have_y, have_z);
+			gcode_move(x, y, z, a, have_x, have_y, have_z, have_a);
 		}
 	} else if (*command == 'M') { // Misc commands
 		command++;

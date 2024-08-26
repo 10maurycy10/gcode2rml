@@ -22,17 +22,14 @@ On linux (and other unix), it's possible to directly send the output to the mill
 
 This program always uses relative positioning, the mill has to be manually moved to the desired origin before cutting.
 
-For some reason, my CNC mill does not cut circles properly (very slow and uneven feed) except on the first file sent.
-As a workaround, send any G-code, and while it's running, manually hold "Clear" to reset the mill without reinitializing it.
-
 # Supported G-code commands
 
 |Commands|Function|
 |-|-|
 |G01, G02|Linear movement (Same feed rate used for both)|
-|G02, G03|Circular movement (Only when I,J,K are used, explicit radius is not supported)|
+|G02, G03|Circular movement (Only with I,J,K)|
 |G17, G18, G19|Set circular movement plane|
-|G10|Set offset (only for X, Y and Z)|
+|G10|Set offset (tool radius offet is not supported)|
 |G20, G21|Set units (mm/in)|
 |G90, G91|Relative/absolute positioning|
 |G49|Clear tool length offset, ignored|
@@ -43,8 +40,7 @@ As a workaround, send any G-code, and while it's running, manually hold "Clear" 
 |M05|Stop spindle|
 |M06|Tool change, ignored|
 
-4-axis machining is not supported.
-Automatic tool changes are not supported, but many CAM tools will generate M06 and G49 commands even for a single tool job.
+4-axis machining is only supported for linear movement (G01, G02).
 
 # RML-1 Format
 
