@@ -12,6 +12,11 @@
 
 #define CIRC_RES 10 // Points per mm
 
+// Warn user about major problems.
+void borked() {
+	fprintf(stderr, "gcode2rml: Attempting to continue, but toolpath is likely borked.\n");
+}
+
 //////////////////
 // RML Commands //
 //////////////////
@@ -154,7 +159,6 @@ void circular(
 	k *= scale;
 	// Find starting position
 	float start[3] = {last_x, last_y, last_z};
-	//fprintf(stderr, "Start: %f %f %f\n", start[0], start[1], start[2]);
 	// Find destination, converting to absolute if needed
 	if (relative) {
 		x += last_x;
@@ -165,10 +169,8 @@ void circular(
 	if (have_x) dst[0] = x;
 	if (have_y) dst[1] = y;
 	if (have_z) dst[2] = z;
-	//fprintf(stderr, "Dst: %f %f %f\n", dst[0], dst[1], dst[2]);
 	// Find center point
 	float center[3] = {i+last_x, j+last_y, k+last_z};
-	//fprintf(stderr, "Center: %f %f %f\n", center[0], center[1], center[2]);
 	// Interpolate
 	float start_angle = atan2(start[circular0] - center[circular0], start[circular1] - center[circular1]);
 	float end_angle = atan2(dst[circular0] - center[circular0], dst[circular1] - center[circular1]);
@@ -181,24 +183,19 @@ void circular(
 	float start_distance = sqrt(pow(start[circular0] - center[circular0], 2) + pow(start[circular1] - center[circular1], 2));
 	float end_distance = sqrt(pow(dst[circular0] - center[circular0], 2) + pow(dst[circular1] - center[circular1], 2));
 	if (abs(start_distance - end_distance) > 1) {
-		fprintf(stderr, "Warning, very large inconsistance in circular interpolation.\n");
-		fprintf(stderr, "The G-code is probobly broken");
+		fprintf(stderr, "gcode2rml: Very large inconsistency in circular interpolation.\n");
+		borked();
 	}
-	//fprintf(stderr, "Distances %f %f\n", start_distance, end_distance);
-	//fprintf(stderr, "Angles %f %f\n", start_angle, end_angle);
 	
 	// Compute length of arc to find good number of steps
 	float delta_angle = abs(fmod(abs(start_angle - end_angle)+M_PI, M_PI*2)) - M_PI;
-	//fprintf(stderr, "Delta angle: %f\n", delta_angle);
 	int steps = (start_distance * abs(delta_angle))  * CIRC_RES;
 	if (steps < 10) steps = 10;
-	//fprintf(stderr, "Using %d steps\n", steps);
 
 	// Linearly interpolate in polar cordinates
 	for (int i = 0; i < steps; i++) {
 		float a = (float)i / steps;
 		float r = start_distance*(1-a) + end_distance*a;
-//		fprintf(stderr, "R: %f\n", r);
 		float angle = start_angle*(1-a) + end_angle*a;
 		// Linearly interpolate for cordinates other then the plain of interpolation
 		float point[3] = {
@@ -218,6 +215,7 @@ void circular(
 	last_z = dst[2];	
 }
 
+
 float dir = 1; // Last used circular interpolation direction
 void translate(char* command) {
 	// Skip whitespace
@@ -234,7 +232,9 @@ void translate(char* command) {
 		int have_x = 0, have_y = 0, have_z = 0, have_a = 0, have_i = 0, have_j = 0, have_k = 0;
 		float x, y, z, a, i = 0, j = 0, k = 0;
 		while (1) {
-			if (*command == 'X') {
+			if (*command == ' ') {
+				command++;
+			} else if (*command == 'X') {
 				command++;
 				x = read_float(&command);
 				have_x = 1;
@@ -260,7 +260,7 @@ void translate(char* command) {
 				have_j = 1;
 			} else if (*command == 'R') {
 				fprintf(stderr, "gcode2rml: Interpolation with explicit radius is not supported.\n");
-				fprintf(stderr, "gcode2rml: Ingnoring block.\n");
+				borked();
 				return;
 			} else if (*command == 'P') { // Not used
 				command++; read_float(&command);
@@ -272,13 +272,20 @@ void translate(char* command) {
 				gcode_move(x, y, z, a, have_x, have_y, have_z, have_a);
 				break;
 			case 2: // Circular movement
-				if (have_a) fprintf(stderr, "4th axis circular interpolation is not supported.\n");
+				if (have_a) {
+					fprintf(stderr, "gcode2rml: 4th axis circular interpolation is not supported.\n");
+					borked();
+					return;
+				}
 				dir = -1;
 				circular(x, y, z, i, j, k, dir, have_x, have_y, have_z);
-				break;
 			case 3: // Circular movement
-				if (have_a) fprintf(stderr, "4th axis circular interpolation is not supported.\n");
 				dir = 1;
+				if (have_a) {
+					fprintf(stderr, "gcode2rml: 4th axis circular interpolation is not supported.\n");
+					borked();
+					return;
+				}
 				circular(x, y, z, i, j, k, dir, have_x, have_y, have_z);
 				break;
 			case 10: // Set offset
@@ -298,7 +305,7 @@ void translate(char* command) {
 			case 90: relative = 0; break; // Absolute movement
 			case 91: relative = 1; break; // Relative movement
 			default: 
-				fprintf(stderr, "gcode2rml: Warning, command G%d is not supported\n", g_command);
+				fprintf(stderr, "gcode2rml: Unkown command 'G%d', ignoring.\n", g_command);
 				break;
 		}
 	} else if (*command == 'S') { // Set Spindle speed
@@ -322,7 +329,9 @@ void translate(char* command) {
 		int have_x = 0, have_y = 0, have_z = 0, have_a = 0, have_j = 0, have_i = 0, have_k = 0;
 		float x, y, z, a, j = 0, i = 0, k = 0;
 		while (1) {
-			if (*command == 'X') {
+			if (*command == ' ') {
+				command++;
+			} else if (*command == 'X') {
 				command++;
 				x = read_float(&command);
 				have_x = 1;
@@ -348,7 +357,7 @@ void translate(char* command) {
 				have_i = 1;
 			} else if (*command == 'R') {
 				fprintf(stderr, "gcode2rml: Interpolation with explicit radius is not supported.\n");
-				fprintf(stderr, "gcode2rml: Ingnoring block.\n");
+				borked();
 				return;
 			} else break;
 		};
@@ -373,31 +382,25 @@ void translate(char* command) {
 				}
 				break; // Tool change, ignored
 			default:
-				fprintf(stderr, "gcode2rml: Warning, command M%d is not supported\n", g_command);
+				fprintf(stderr, "gcode2rml: Warning, command M%d is not recognized, skipping line\n", g_command);
 				break;
-			
 		}
 	} else {
-		fprintf(stderr, "gcode2rml: Unknown command '%c'.\n", *command);	
-		exit(1);
+		fprintf(stderr, "gcode2rml: Unknown command class '%c', skipping line.\n", *command);	
+		return;
 	}
 	// Recurse to handle any extra commands in the block
 	if (*command != 0) translate(command);
 }
 
 int main(void) {
-	fprintf(stderr, "gcode2rml: ready.\n");
-	init();
-
 	char gcode[1024];
 	
-	// Read lines and translate them to RML
-	while (1) {
-		if (!fgets(gcode, 1024, stdin)) {
-			fprintf(stderr, "gcode2rml: Done!\n");
-			return 0;
-		}
-		translate(gcode);
-	}
-}
+	init();
+	fprintf(stderr, "gcode2rml: ready.\n");
+	
+	while (fgets(gcode, 1024, stdin)) translate(gcode);
 
+	fprintf(stderr, "gcode2rml: Done!\n");
+	return 0;
+}
