@@ -47,6 +47,8 @@ It's also possible to set the mill to an absolute position by pretending a seque
 
 This one moves the mill to the origin, starting with the Z axis to hopefully avoid hitting anything.
 
+Passing `flush` on the command line will cause the program to write to the mill after every line, allowing be used for realtime control in place of the mill's planel.
+
 # Supported G-code commands
 
 |Commands|Function|

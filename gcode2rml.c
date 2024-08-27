@@ -3,14 +3,15 @@
 // Roland mills.
 //
 // All movement is relative, starting position is used as the orgin.
-//
-// Input is read from stdin, output on stdout, messagses on stderr
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
 #define CIRC_RES 10 // Points per mm
+
+FILE* out = 0; FILE* in = 0; 
 
 // Warn user about major problems.
 void borked() {
@@ -49,12 +50,12 @@ void move(float x, float y, float z, float a) { // Abosolute movement in mm
 	rml_last_z += dz;
 	rml_last_a += da;
 	// Send to mill.
-	printf("!ZE ");
-	if (dx) printf("X%d", dx);
-	if (dy) printf("Y%d", dy);
-	if (dz) printf("Z%d", dz);
-	if (da) printf("A%f", ((float)da)/1000);
-	printf(";\r\n");
+	fprintf(out, "!ZE ");
+	if (dx) fprintf(out, "X%d", dx);
+	if (dy) fprintf(out, "Y%d", dy);
+	if (dz) fprintf(out, "Z%d", dz);
+	if (da) fprintf(out, "A%f", ((float)da)/1000);
+	fprintf(out, ";\r\n");
 }
 
 ////////////////////
@@ -320,11 +321,11 @@ void translate(char* command) {
 		}
 		int setting = round((speed - 400) / 772);
 		if (setting == 0) setting = 1;
-		printf("!RC%d;\r\n", (int)setting);
+		fprintf(out, "!RC%d;\r\n", (int)setting);
 	} else if (*command == 'F') { // Set feedrate
 		command++;
 		float feedrate = read_float(&command) * scale;
-		printf("V%.1f;\r\n", feedrate / 60);
+		fprintf(out, "V%.1f;\r\n", feedrate / 60);
 	} else if (*command == 'X' || *command == 'Y' || *command == 'Z') { // Bare cordinates, assume linear movement
 		int have_x = 0, have_y = 0, have_z = 0, have_a = 0, have_j = 0, have_i = 0, have_k = 0;
 		float x, y, z, a, j = 0, i = 0, k = 0;
@@ -373,8 +374,8 @@ void translate(char* command) {
 			case 0: break; // Program stop
 			case 1: break; // Optional stop
 			case 30: case 2: break; // End of program
-			case 3: case 4: printf("!MC1;\r\n"); break; // Start spindle
-			case 5: printf("!MC0;\r\n"); break; // Stop spindle
+			case 3: case 4: fprintf(out, "!MC1;\r\n"); break; // Start spindle
+			case 5: fprintf(out, "!MC0;\r\n"); break; // Stop spindle
 			case 6:
 				if (*command == 'T') {
 					command++;
@@ -393,14 +394,52 @@ void translate(char* command) {
 	if (*command != 0) translate(command);
 }
 
-int main(void) {
+void usage(char* name) {
+	fprintf(stderr, "Usage: %s [input FILE] [output FILE] [flush]\n", name);
+	fprintf(stderr, "Convert G-code into RML-1 for driving Roland CNC mills\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "  input FILE   File containing g-code to be converted, defaults to standard input.\n");
+	fprintf(stderr, "  output FILE  File to write generated g-code to.\n");
+	fprintf(stderr, "  flush        Flush output buffer after processing a line, allows realtime control.\n");
+	exit(1);
+}
+
+int main(int argc, char** argv) {
 	char gcode[1024];
+
+	// Read command line arguments
+	int flush = 0;
+	int options_read = 1;
+	while (argc > options_read) {
+		if (strcmp("input", argv[options_read]) == 0) {
+			options_read += 2;
+			if (options_read > argc) usage(argv[0]);
+			if (in) fclose(in);
+			in = fopen(argv[options_read-1], "r");
+		} else if (strcmp("output", argv[options_read]) == 0) {
+			options_read += 2;
+			if (options_read > argc) usage(argv[0]);
+			if (out) fclose(out);
+			out = fopen(argv[options_read-1], "w");
+		} else if (strcmp("flush", argv[options_read]) == 0) {
+			options_read += 1;
+			flush = 1;
+		} else {
+			usage(argv[0]);
+		}
+	}
 	
+	// Set default input/output
+	if (!in) in = stdin;
+	if (!out) out = stdout;
+
 	init();
 	fprintf(stderr, "gcode2rml: ready.\n");
-	
-	while (fgets(gcode, 1024, stdin)) translate(gcode);
-
+	while (fgets(gcode, 1024, in)) {
+		translate(gcode);
+		if (flush) fflush(out);
+	}
 	fprintf(stderr, "gcode2rml: Done!\n");
+
 	return 0;
 }
