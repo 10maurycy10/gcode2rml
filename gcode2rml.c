@@ -36,10 +36,11 @@ void init() {
 	printf("!RC15;\r\n"); // Default to 12000 RPM, the max rotational speed of my machine
 }
 
+float lin_units = 0.01; // 10s of um
 int rml_last_x = 0, rml_last_y = 0, rml_last_z = 0, rml_last_a = 0;
 void move(float x, float y, float z, float a) { // Abosolute movement in mm
 	// Scale to micrometers
-	x *= 100; y *= 100; z *= 100; a *= 1000;
+	x /= lin_units; y *= lin_units; z *= lin_units; a *= 1000;
 	// Compute movement neaded to reach position
 	int dx = x - rml_last_x;
 	int dy = y - rml_last_y;
@@ -404,6 +405,7 @@ void usage(char* name) {
 	fprintf(stderr, "  input FILE   File containing g-code to be converted, defaults to standard input.\n");
 	fprintf(stderr, "  output FILE  File to write generated g-code to.\n");
 	fprintf(stderr, "  flush        Flush output buffer after processing a line, allows realtime control.\n");
+	fprintf(stderr, "  nc           Assume mill is in 'NC' mode instead of 'RML' mode.\n");
 	exit(1);
 }
 
@@ -427,6 +429,9 @@ int main(int argc, char** argv) {
 		} else if (strcmp("flush", argv[options_read]) == 0) {
 			options_read += 1;
 			flush = 1;
+		} else if (strcmp("nc", argv[options_read]) == 0) {
+			options_read += 1;
+			lin_units = 0.001;
 		} else {
 			usage(argv[0]);
 		}
