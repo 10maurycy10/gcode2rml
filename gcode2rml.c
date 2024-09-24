@@ -38,7 +38,7 @@ void init() {
 
 int rml_last_x = 0, rml_last_y = 0, rml_last_z = 0, rml_last_a = 0;
 void move(float x, float y, float z, float a) { // Abosolute movement in mm
-	// Scale to 10s of micrometers
+	// Scale to micrometers
 	x *= 100; y *= 100; z *= 100; a *= 1000;
 	// Compute movement neaded to reach position
 	int dx = x - rml_last_x;
@@ -51,10 +51,10 @@ void move(float x, float y, float z, float a) { // Abosolute movement in mm
 	rml_last_a += da;
 	// Send to mill.
 	fprintf(out, "!ZE ");
-	if (dx) fprintf(out, "X%d", dx);
-	if (dy) fprintf(out, "Y%d", dy);
-	if (dz) fprintf(out, "Z%d", dz);
-	if (da) fprintf(out, "A%f", ((float)da)/1000);
+	if (dx) fprintf(out, "X%d ", dx);
+	if (dy) fprintf(out, "Y%d ", dy);
+	if (dz) fprintf(out, "Z%d ", dz);
+	if (da) fprintf(out, "A%f ", ((float)da)/1000);
 	fprintf(out, ";\r\n");
 }
 
@@ -192,6 +192,7 @@ void circular(
 	float delta_angle = abs(fmod(abs(start_angle - end_angle)+M_PI, M_PI*2)) - M_PI;
 	int steps = (start_distance * abs(delta_angle))  * CIRC_RES;
 	if (steps < 10) steps = 10;
+	fprintf(stderr, "steps: %d, %f\n", steps, dir);
 
 	// Linearly interpolate in polar cordinates
 	for (int i = 0; i < steps; i++) {
@@ -213,12 +214,13 @@ void circular(
 	move(offset_x + dst[0], offset_y + dst[1], offset_z + dst[2], last_a);
 	last_x = dst[0];
 	last_y = dst[1];
-	last_z = dst[2];	
+	last_z = dst[2];
 }
 
 
 float dir = 1; // Last used circular interpolation direction
 void translate(char* command) {
+	fprintf(stderr, "'%s'\n", command);
 	// Skip whitespace
 	while (*command == ' ' || *command == '\t' || *command == '\r' || *command == '\n') command++;
 	// Skip empty lines
@@ -280,13 +282,14 @@ void translate(char* command) {
 				}
 				dir = -1;
 				circular(x, y, z, i, j, k, dir, have_x, have_y, have_z);
+				break;
 			case 3: // Circular movement
-				dir = 1;
 				if (have_a) {
 					fprintf(stderr, "gcode2rml: 4th axis circular interpolation is not supported.\n");
 					borked();
 					return;
 				}
+				dir = 1;
 				circular(x, y, z, i, j, k, dir, have_x, have_y, have_z);
 				break;
 			case 10: // Set offset
