@@ -155,12 +155,8 @@ This command has a different argument syntax, similar to G-code.
 Each argument is prefixed with `X`, `Y`, `Z` or `A`, indicating which axis it corresponds to, and are concatenated without any separators.
 This has the same modal coordinate system as the `Z` command.
 
-If a decimal point is present, the argument is assumed to be in millimeters or degrees, otherwise it is in hundredths of those units.
-
 
 `!ZEX1`: Move the X axis by/to 10 microns.
-
-`!ZEX1.0`: Move the X axis by/to 1 mm.
 
 `!ZEX1.0`: Move the 4th axis by/to 1 degree
 
