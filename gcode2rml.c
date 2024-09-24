@@ -221,7 +221,6 @@ void circular(
 
 float dir = 1; // Last used circular interpolation direction
 void translate(char* command) {
-	fprintf(stderr, "'%s'\n", command);
 	// Skip whitespace
 	while (*command == ' ' || *command == '\t' || *command == '\r' || *command == '\n') command++;
 	// Skip empty lines

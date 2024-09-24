@@ -3,6 +3,10 @@
 This program converts standard G-code into the RML format used by Roland's CNC mills.
 This allows the mills to be used without the aging vendor provided software.
 
+> Note: The MDX-540 mill has 2 modes, "RML" and "NC".
+> Both modes accept RML programs, but use different units.
+> If the mill is in NC mode, pass the `nc` argment to generate correct toolpaths.
+
 The program only depends on the standard library, so compiling should be fairly straightforward.
 This command works for gcc:
 
@@ -48,10 +52,6 @@ It's also possible to set the mill to an absolute position by pretending a seque
 This one moves the mill to the origin, starting with the Z axis to hopefully avoid hitting anything.
 
 Passing `flush` on the command line will cause the program to write to the mill after every line, allowing be used for realtime control in place of the mill's planel.
-
-The mill has 2 modes, RML and NC.
-Both modes accept RML programs, but use different units.
-If the mill is in NC mode, pass the `nc` argment or the toolpath will be ten times smaller then intended.
 
 # Supported G-code commands
 
