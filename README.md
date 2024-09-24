@@ -49,6 +49,10 @@ This one moves the mill to the origin, starting with the Z axis to hopefully avo
 
 Passing `flush` on the command line will cause the program to write to the mill after every line, allowing be used for realtime control in place of the mill's planel.
 
+The mill has 2 modes, RML and NC.
+Both modes accept RML programs, but use different units.
+If the mill is in NC mode, pass the `nc` argment or the toolpath will be ten times smaller then intended.
+
 # Supported G-code commands
 
 |Commands|Function|
