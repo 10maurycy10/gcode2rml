@@ -29,18 +29,18 @@ void borked() {
 // Spindle speed and feed rate are set directly by the g-code parser
 
 void init() {
-	printf("V10;\r\n"); // Sane default movement speed, 10 mm/s
-	printf("!DW;\r\n"); // No dwell time
-	printf("^PR;\r\n"); // Relative mode
-	printf("!MC0;\r\n"); // Stop spindle
-	printf("!RC15;\r\n"); // Default to 12000 RPM, the max rotational speed of my machine
+	fprintf(out, "V10;\r\n"); // Sane default movement speed, 10 mm/s
+	fprintf(out, "!DW;\r\n"); // No dwell time
+	fprintf(out, "^PR;\r\n"); // Relative mode
+	fprintf(out, "!MC0;\r\n"); // Stop spindle
+	fprintf(out, "!RC15;\r\n"); // Default to 12000 RPM, the max rotational speed of my machine
 }
 
 float lin_units = 0.01; // 10s of um
 int rml_last_x = 0, rml_last_y = 0, rml_last_z = 0, rml_last_a = 0;
 void move(float x, float y, float z, float a) { // Abosolute movement in mm
 	// Scale to micrometers
-	x /= lin_units; y *= lin_units; z *= lin_units; a *= 1000;
+	x /= lin_units; y /= lin_units; z /= lin_units; a *= 1000;
 	// Compute movement neaded to reach position
 	int dx = x - rml_last_x;
 	int dy = y - rml_last_y;
@@ -193,7 +193,6 @@ void circular(
 	float delta_angle = abs(fmod(abs(start_angle - end_angle)+M_PI, M_PI*2)) - M_PI;
 	int steps = (start_distance * abs(delta_angle))  * CIRC_RES;
 	if (steps < 10) steps = 10;
-	fprintf(stderr, "steps: %d, %f\n", steps, dir);
 
 	// Linearly interpolate in polar cordinates
 	for (int i = 0; i < steps; i++) {
@@ -218,6 +217,8 @@ void circular(
 	last_z = dst[2];
 }
 
+// Macro for parsing the arguments to G00, G01, G02...
+#define PARSER(val, have, chr) else if (*command == chr) {command++; val = read_float(&command); have = 1;}
 
 float dir = 1; // Last used circular interpolation direction
 void translate(char* command) {
@@ -227,6 +228,8 @@ void translate(char* command) {
 	if (*command == 0) return;
 	// Ignore start/end of program
 	if (*command == '%') return;
+	// Comments
+	if (*command == '(') return;
 	// Read first charater of command
 	if (*command == 'G') { // General commands
 		command++;
@@ -237,31 +240,15 @@ void translate(char* command) {
 		while (1) {
 			if (*command == ' ') {
 				command++;
-			} else if (*command == 'X') {
-				command++;
-				x = read_float(&command);
-				have_x = 1;
-			} else if (*command == 'Y') {
-				command++;
-				y = read_float(&command);
-				have_y = 1;
-			} else if (*command == 'Z') {
-				command++;
-				z = read_float(&command);
-				have_z = 1;
-			} else if (*command == 'A') {
-				command++;
-				a = read_float(&command);
-				have_a = 1;
-			} else if (*command == 'I') {
-				command++;
-				i = read_float(&command);
-				have_i = 1;
-			} else if (*command == 'J') {
-				command++;
-				j = read_float(&command);
-				have_j = 1;
-			} else if (*command == 'R') {
+			}
+			PARSER(x, have_x, 'X')
+			PARSER(y, have_y, 'Y')
+			PARSER(z, have_z, 'Z')
+			PARSER(a, have_a, 'A')
+			PARSER(i, have_i, 'I')
+			PARSER(j, have_j, 'J')
+			PARSER(k, have_k, 'K')
+			else if (*command == 'R') {
 				fprintf(stderr, "gcode2rml: Interpolation with explicit radius is not supported.\n");
 				borked();
 				return;
@@ -335,31 +322,15 @@ void translate(char* command) {
 		while (1) {
 			if (*command == ' ') {
 				command++;
-			} else if (*command == 'X') {
-				command++;
-				x = read_float(&command);
-				have_x = 1;
-			} else if (*command == 'Y') {
-				command++;
-				y = read_float(&command);
-				have_y = 1;
-			} else if (*command == 'Z') {
-				command++;
-				z = read_float(&command);
-				have_z = 1;
-			} else if (*command == 'A') {
-				command++;
-				a = read_float(&command);
-				have_a = 1;
-			} else if (*command == 'J') {
-				command++;
-				j = read_float(&command);
-				have_j = 1;
-			} else if (*command == 'I') {
-				command++;
-				i = read_float(&command);
-				have_i = 1;
-			} else if (*command == 'R') {
+			}
+			PARSER(x, have_x, 'X')
+			PARSER(y, have_y, 'Y')
+			PARSER(z, have_z, 'Z')
+			PARSER(a, have_a, 'A')
+			PARSER(i, have_i, 'I')
+			PARSER(j, have_j, 'J')
+			PARSER(k, have_k, 'K')
+			else if (*command == 'R') {
 				fprintf(stderr, "gcode2rml: Interpolation with explicit radius is not supported.\n");
 				borked();
 				return;
