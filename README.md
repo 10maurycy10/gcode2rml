@@ -37,9 +37,10 @@ or
 
 The origin of the toolpath is the starting position of the mill.
 Your CAM tool must be set to assume the stock is below the origin.
-Alternatively, because the generated RML uses relative coordinates, it's possible to manually move the entire toolpath by inserting or removing a movement command, see the "RML-1 Format" section.
+Alternatively, because the generated RML uses relative coordinates, it's possible to manually move the entire toolpath by adding
+or deleating a movement command, see the "RML-1 Format" section.
 
-It's also possible to set the mill to an absolute position by pretending a sequence like this:
+It's also possible to set the mill to an absolute position by prepending this RML sequence:
 
 ```
 !MC0;
@@ -57,13 +58,13 @@ Passing `flush` on the command line will cause the program to write to the mill 
 
 |Commands|Function|
 |-|-|
-|G01, G02|Linear movement (Same feed rate used for both)|
+|G00, G01|Linear movement (Same feed rate used for both)|
 |G02, G03|Circular movement (Only with I,J,K)|
 |G17, G18, G19|Set circular movement plane|
 |G10|Set offset (tool radius offer is not supported)|
 |G20, G21|Set units (mm/in)|
 |G90, G91|Relative/absolute positioning|
-|G49|Clear tool length offset, ignored|
+|G49, G40|Clear tool length offset, ignored|
 |S|Set spindle speed (approximate, should be within 400 RPM)|
 |F|Set feed rate|
 |M00, M01, M02, M30|Stop program, ignored|
